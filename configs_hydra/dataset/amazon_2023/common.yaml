@@ -1,0 +1,11 @@
+c_iid: parent_asin
+c_score: rating
+c_timestamp: timestamp
+c_uid: user_id
+dropna: false
+kcore: 5
+metadata_cols:
+  - title
+  - store
+  - main_category
+chunksize: 500

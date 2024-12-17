@@ -1,0 +1,7 @@
+defaults:
+  - _self_
+  - ./amazon_2018/common@
+name: amazon_2018:Pet_Supplies
+path_reviews: ./data/amazon_reviews_2018/reviews/Pet_Supplies.json
+path_metadata: ./data/amazon_reviews_2018/meta/meta_Pet_Supplies.json
+path_output: ./data_experiments/amazon_reviews_2018/Pet_Supplies

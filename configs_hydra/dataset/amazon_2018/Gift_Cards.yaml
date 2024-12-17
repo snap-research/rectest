@@ -1,0 +1,7 @@
+defaults:
+  - _self_
+  - ./amazon_2018/common@
+name: amazon_2018:Gift_Cards
+path_reviews: ./data/amazon_reviews_2018/reviews/Gift_Cards.json
+path_metadata: ./data/amazon_reviews_2018/meta/meta_Gift_Cards.json
+path_output: ./data_experiments/amazon_reviews_2018/Gift_Cards

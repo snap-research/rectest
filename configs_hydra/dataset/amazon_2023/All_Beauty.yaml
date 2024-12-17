@@ -1,0 +1,7 @@
+defaults:
+  - _self_
+  - ./amazon_2023/common@
+name: amazon_2023:All_Beauty
+path_reviews: ./data/amazon_reviews_2023/reviews/All_Beauty.jsonl
+path_metadata: ./data/amazon_reviews_2023/meta/meta_All_Beauty.jsonl
+path_output: ./data_experiments/amazon_reviews_2023/All_Beauty

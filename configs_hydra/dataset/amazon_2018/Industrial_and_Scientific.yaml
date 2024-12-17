@@ -1,0 +1,7 @@
+defaults:
+  - _self_
+  - ./amazon_2018/common@
+name: amazon_2018:Industrial_and_Scientific
+path_reviews: ./data/amazon_reviews_2018/reviews/Industrial_and_Scientific.json
+path_metadata: ./data/amazon_reviews_2018/meta/meta_Industrial_and_Scientific.json
+path_output: ./data_experiments/amazon_reviews_2018/Industrial_and_Scientific

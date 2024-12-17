@@ -1,0 +1,4 @@
+defaults:
+  - dask: local
+  - dataset: amazon_2018/All_Beauty
+  - experiment: sasrec

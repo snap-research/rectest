@@ -1,0 +1,7 @@
+defaults:
+  - _self_
+  - ./amazon_2018/common@
+name: amazon_2018:Arts_Crafts_and_Sewing
+path_metadata: ./data/amazon_reviews_2018/meta/meta_Arts_Crafts_and_Sewing.json
+path_output: ./data_experiments/amazon_reviews_2018/Arts_Crafts_and_Sewing
+path_reviews: ./data/amazon_reviews_2018/reviews/Arts_Crafts_and_Sewing.json

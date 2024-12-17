@@ -1,0 +1,20 @@
+defaults:
+  - _self_
+  - ./amazon_2018/common@
+path_reviews:
+  - ./data/amazon_reviews_2018/reviews/Automotive.json
+  - ./data/amazon_reviews_2018/reviews/Cell_Phones_and_Accessories.json
+  - ./data/amazon_reviews_2018/reviews/Clothing_Shoes_and_Jewelry.json
+  - ./data/amazon_reviews_2018/reviews/Electronics.json
+  - ./data/amazon_reviews_2018/reviews/Grocery_and_Gourmet_Food.json
+  - ./data/amazon_reviews_2018/reviews/Home_and_Kitchen.json
+  - ./data/amazon_reviews_2018/reviews/Movies_and_TV.json
+path_metadata:
+  - ./data/amazon_reviews_2018/meta/meta_Automotive.json
+  - ./data/amazon_reviews_2018/meta/meta_Cell_Phones_and_Accessories.json
+  - ./data/amazon_reviews_2018/meta/meta_Clothing_Shoes_and_Jewelry.json
+  - ./data/amazon_reviews_2018/meta/meta_Electronics.json
+  - ./data/amazon_reviews_2018/meta/meta_Grocery_and_Gourmet_Food.json
+  - ./data/amazon_reviews_2018/meta/meta_Home_and_Kitchen.json
+  - ./data/amazon_reviews_2018/meta/meta_Movies_and_TV.json
+path_output: ./data_experiments/amazon_reviews_2018/rec_pretrain_train-data

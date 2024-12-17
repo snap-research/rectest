@@ -1,0 +1,58 @@
+model:
+  _target_: recommender.rec_model.SASRec
+  hidden_size: 64
+  item_num: null # updated in code
+  state_size: 1_000 # Max Sequence Length
+  dropout: 0.1
+  num_heads: 1
+  no_id: false
+  device: 'cuda'
+  extra_embeddings: null
+
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 0.001
+  weight_decay: 1e-6
+  eps: 1e-8
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.StepLR
+  step_size: 10
+  gamma: 0.9
+
+collator_train:
+  _target_: baselines.collators.IDOnlyCollateFn
+  option: 'random'
+  num_candidates: -1
+
+collator_val:
+  _target_: baselines.collators.IDOnlyCollateFn
+  option: 'random'
+  num_candidates: -1
+
+dataset:
+  _target_: baselines.dataloading.SequentialIterableDataset
+  data_path: ./data_experiments/movielens/ml100
+  min_seq_len: 1
+  max_seq_len: 1_000
+
+# training
+epochs: 10000
+batch_size_train: 512
+batch_size_val: 512
+early_stopping: 50
+seed: 43
+gradient_accumulation_steps: 2
+# evaluation
+eval_at_start: true
+eval_steps: 160
+# metrics
+metric_ks: 10
+save_metric: 'NDCG'
+# infrastructure
+device: 'cuda'
+number_of_devices: 1
+fp16: true
+# results/checkpoints
+accelerate_checkpoint: null
+output_dir: 'sasrec'

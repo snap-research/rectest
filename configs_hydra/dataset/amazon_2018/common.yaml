@@ -1,0 +1,12 @@
+c_iid: asin
+c_score: overall
+c_timestamp: unixReviewTime
+c_uid: reviewerID
+dropna: false
+kcore: 5
+metadata_cols:
+  - title
+  - brand
+  - category
+recformer: true
+chunksize: 500

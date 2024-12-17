@@ -1,0 +1,5 @@
+n_workers: 10
+threads_per_worker: 2
+memory_limit: '20GB'
+local_directory: /tmp/dask
+dashboard_address: 8999

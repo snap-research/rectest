@@ -1,0 +1,68 @@
+common_model_configs: &common_model_configs
+  model_name: allenai/longformer-base-4096
+  max_attr_num: 3
+  max_attr_length: 32
+  max_item_embeddings: 51
+  max_token_num: 1024
+
+model:
+  _target_: recommender.rec_model.RecformerForSeqRec
+  pretrain_ckpt: longformer_ckpt/custom_longformer-base-4096.bin
+  item_num: null # updated in code
+  attention_window: "[64] * 12"
+  extra_embeddings: null
+  <<: *common_model_configs
+
+
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 0.001
+  weight_decay: 1e-6
+  eps: 1e-8
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.StepLR
+  step_size: 10
+  gamma: 0.9
+
+collator_train:
+  _target_: baselines.collators.RecFormerCollateFn
+  option: 'random'
+  num_candidates: 2
+  <<: *common_model_configs
+
+collator_val:
+  _target_: baselines.collators.RecFormerCollateFn
+  option: 'random'
+  num_candidates: -1
+  <<: *common_model_configs
+
+dataset:
+  _target_: baselines.dataloading.RecformerDataset
+  data_path: data_experiments/amazon_reviews_2018/Video_Games
+  min_seq_len: 1
+  max_seq_len: 10
+  feats_to_dict:
+    _target_: baselines.dataloading.extract_custom_feats
+    _partial_: true
+
+# training
+epochs: 1000
+batch_size_train: 32
+batch_size_val: 64
+early_stopping: 20
+seed: 43
+gradient_accumulation_steps: 2
+# evaluation
+eval_at_start: false
+eval_steps: 233
+# metrics
+metric_ks: 10
+save_metric: 'NDCG@10'
+# infrastructure
+device: 'cuda'
+number_of_devices: 2
+fp16: true
+# results/checkpoints
+accelerate_checkpoint: null
+output_dir: 'recformer'

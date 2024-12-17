@@ -1,0 +1,12 @@
+c_iid: movie_id
+c_score: rating
+c_timestamp: timestamp
+c_uid: user_id
+dropna: true
+kcore: 5
+metadata_cols:
+  - title
+chunksize: 500
+path_reviews: ./data/movielens/ml-100k/reviews.jsonl
+path_metadata: ./data/movielens/ml-100k/meta.jsonl
+path_output: ./data_experiments/movielens/ml100
