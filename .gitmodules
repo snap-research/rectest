@@ -1,3 +1,6 @@
 [submodule "recommender/LlamaRec"]
 	path = recommender/LlamaRec
 	url = https://github.com/Yueeeeeeee/LlamaRec.git
+[submodule "recommender/RecFormer"]
+	path = recommender/RecFormer
+	url = https://github.com/AaronHeee/RecFormer.git
