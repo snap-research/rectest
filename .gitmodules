@@ -1,0 +1,3 @@
+[submodule "recommender/LlamaRec"]
+	path = recommender/LlamaRec
+	url = https://github.com/Yueeeeeeee/LlamaRec.git
