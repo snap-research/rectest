@@ -62,3 +62,11 @@ To benchmark your dataset using the RecTest library, follow these steps:
 
 For detailed instructions and examples, refer to the [notebooks/create_dataset.ipynb](notebooks/create_dataset.ipynb).
 
+## Using Recformer and LlamaRec
+To avoid copying code from the respective github repos, we have added both Recformer and LlamaRec as submodules.
+
+### Initializing Submodules
+To use Recformer and LlamaRec, you need to initialize the submodules from git:
+
+```sh
+git submodule update --init --recursive
