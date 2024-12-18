@@ -1,5 +1,5 @@
 model:
-  _target_: recommender.LlamaRec.model.lru_refactored.LRURec
+  _target_: recommender.custom_modules.lru_refactored.LRURec
   bert_hidden_units: 64
   item_num: null # updated in code
   bert_num_blocks: 1 

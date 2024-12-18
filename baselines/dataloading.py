@@ -8,8 +8,7 @@ import dask.dataframe as dd
 from torch.utils.data import IterableDataset
 from transformers.models.llama.tokenization_llama import DEFAULT_SYSTEM_PROMPT
 from transformers import AutoTokenizer
-from recommender.LlamaRec.datasets.utils import Prompter
-
+import logging
 
 @dataclass
 class SequenceOutput:
@@ -255,6 +254,11 @@ class LLMDataset(IterableDataset):
             .to_dict()["features"]
         )
         self.tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
+        try:
+            from recommender.LlamaRec.datasets.utils import Prompter
+        except ImportError:
+            logging.error("The LlamaRec submodule is not available. Please initialize the submodule.")
+            raise ImportError("The LlamaRec submodule is not available. Please initialize the submodule.")
         self.prompter = Prompter()
         self.llm_negative_sample_size = llm_negative_sample_size
         self.evaluation = evaluation
