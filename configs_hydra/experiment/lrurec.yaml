@@ -2,7 +2,7 @@ model:
   _target_: recommender.LlamaRec.model.lru_refactored.LRURec
   bert_hidden_units: 64
   item_num: null # updated in code
-  bert_num_blocks: 1 # Max Sequence Length
+  bert_num_blocks: 1 
   bert_dropout: 0.1
   bert_attn_dropout: 0.1
 
@@ -20,36 +20,38 @@ scheduler:
 collator_train:
   _target_: baselines.collators.IDOnlyCollateFn
   option: 'random'
-  num_candidates: 5
+  num_candidates: 10
+  evaluation: false
 
 collator_val:
   _target_: baselines.collators.IDOnlyCollateFn
   option: 'random'
-  num_candidates: 10000
+  num_candidates: 1000
+  evaluation: true
 
 dataset:
   _target_: baselines.dataloading.SequentialIterableDataset
-  data_path: ./data_experiments/movielens/ml100
+  data_path: data_experiments/movielens/100k
   min_seq_len: 1
-  max_seq_len: 10000
+  max_seq_len: 100
 
 # training
-epochs: 10000
-batch_size_train: 32
-batch_size_val: 64
-early_stopping: 50
-seed: 43
+epochs: 500
+batch_size_train: 1024
+batch_size_val: 1024
+early_stopping: 20
+seed: 42
 gradient_accumulation_steps: 2
 # evaluation
 eval_at_start: true
-eval_steps: 80
+eval_steps: 300
 # metrics
 metric_ks: 10
 save_metric: 'NDCG'
 # infrastructure
 device: 'cuda'
 number_of_devices: 1
-fp16: true
+mixed_precision: 'fp16'
 # results/checkpoints
 accelerate_checkpoint: null
-output_dir: 'sasrec'
+output_dir: 'lrurec'

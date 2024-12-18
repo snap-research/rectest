@@ -1,4 +1,4 @@
-name: panko
+name: rectest
 channels:
   - conda-forge
   - defaults
@@ -139,4 +139,4 @@ dependencies:
       - xyzservices==2024.9.0
       - yarl==1.18.3
       - zict==3.0.0
-prefix: /home/dimosthenisa/anaconda3/envs/panko
+prefix: /home/dimosthenisa/anaconda3/envs/rectest

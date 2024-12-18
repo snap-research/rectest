@@ -2,7 +2,7 @@ model:
   _target_: recommender.rec_model.GRU
   hidden_size: 64
   item_num: null # updated in code
-  state_size: 10 # Max Sequence Length
+  state_size: 100 # Max Sequence Length
   gru_layers: 1
   extra_embeddings: null
   no_id: false
@@ -21,36 +21,39 @@ scheduler:
 collator_train:
   _target_: baselines.collators.IDOnlyCollateFn
   option: 'random'
-  num_candidates: 100
+  num_candidates: 10
+  evaluation: false
 
 collator_val:
   _target_: baselines.collators.IDOnlyCollateFn
   option: 'random'
-  num_candidates: -1
+  num_candidates: 1000
+  evaluation: true
 
 dataset:
   _target_: baselines.dataloading.SequentialIterableDataset
-  data_path: data_experiments/amazon_reviews_2018/Video_Games
+  data_path: data_experiments/movielens/100k
   min_seq_len: 1
-  max_seq_len: 10
+  max_seq_len: 100
 
 # training
-epochs: 1000
-batch_size_train: 64
-batch_size_val: 128
+epochs: 500
+batch_size_train: 1024
+batch_size_val: 1024
 early_stopping: 20
-seed: 43
+seed: 42
 gradient_accumulation_steps: 2
 # evaluation
 eval_at_start: true
-eval_steps: 233
+eval_steps: 300
 # metrics
 metric_ks: 10
-save_metric: 'NDCG@10'
+save_metric: 'NDCG'
 # infrastructure
 device: 'cuda'
-number_of_devices: 2
-fp16: true
+number_of_devices: 1
+mixed_precision: 'fp16'
 # results/checkpoints
 accelerate_checkpoint: null
+
 output_dir: 'caser'

@@ -6,6 +6,9 @@ from typing import Any, Callable, Dict, List, Optional
 import constants as cts
 import dask.dataframe as dd
 from torch.utils.data import IterableDataset
+from transformers.models.llama.tokenization_llama import DEFAULT_SYSTEM_PROMPT
+from transformers import AutoTokenizer
+from recommender.LlamaRec.datasets.utils import Prompter
 
 
 @dataclass
@@ -195,3 +198,195 @@ def extract_custom_feats(input_text: str) -> Dict[str, str]:
     """
     res = {"features": input_text}
     return res
+
+
+class LLMDataset(IterableDataset):
+    """
+    Iterable dataset for sequential training data loading.
+    Adapted to align with RecformerDataset structure.
+    """
+
+    def __init__(
+        self,
+        data_path: str,
+        candidates_path: str,
+        split: str,
+        max_seq_len: int = 100,
+        min_seq_len: int = 1,
+        max_len: int = 1024,
+        llm_negative_sample_size: int = 5,
+        evaluation: bool = False,
+    ):
+        """
+        Initialize the dataset.
+        Args:
+            data_path (str): Path to the dataset.
+            candidates_path (str): Path to the candidates dataset.
+            split (str): Dataset split (e.g., 'train', 'test').
+            max_seq_len (int, optional): Maximum sequence length.
+            min_seq_len (int, optional): Minimum sequence length.
+            max_len (int, optional): Maximum length for sentence.
+            llm_negative_sample_size (int, optional): Size of negative samples for LLM.
+            evaluation (bool, optional): Flag indicating if the dataset is for evaluation.
+        """
+
+        path_data = pjoin(data_path, split)
+        self.data = dd.read_parquet(path_data)
+
+        # filter sequences based on user input (< max_seq_len and > min_seq_len)
+        self.data = self.data[self.data[cts.LEN_SEQ] <= max_seq_len]
+        self.data = self.data[self.data[cts.LEN_SEQ] >= min_seq_len]
+
+        # add item_id_encoded (target) in sequence
+        self.data["item_id_encoded_list"] = self.data.apply(
+            lambda row: list(row["item_id_encoded_list"]).append(
+                row["item_id_encoded"]
+            ),
+            axis=1,
+        )
+
+        self.candidates = dd.read_parquet(candidates_path, split)
+        self.max_len = max_len
+        self.text_dict = (
+            self.data.drop_duplicates(subset="item_id_encoded")[
+                ["item_id_encoded", "features"]
+            ]
+            .set_index("item_id_encoded")
+            .to_dict()["features"]
+        )
+        self.tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
+        self.prompter = Prompter()
+        self.llm_negative_sample_size = llm_negative_sample_size
+        self.evaluation = evaluation
+        self.size = len(self.data)
+
+    def __iter__(self):
+        for idx, tokens in self.data["item_id_encoded_list"].values:
+            yield self._process_item(idx, tokens)
+
+    def _process_item(self, idx, tokens):
+        """
+        Process a single sequence item to generate input features and labels.
+
+        Args:
+            tokens: Sequence of tokens.
+
+        Returns:
+            Processed input data.
+        """
+        answer = tokens[-1]
+        original_seq = tokens[:-1]
+        seq = original_seq[-self.max_len :]
+
+        candidates = self.candidates.loc[idx]
+
+        return self.seq_to_token_ids(
+            self.max_len,
+            DEFAULT_SYSTEM_PROMPT,
+            cts.INPUT_TEMPLATE,
+            seq,
+            candidates,
+            answer,
+            self.text_dict,
+            self.tokenizer,
+            self.prompter,
+            eval=self.evaluation,
+        )
+
+    # the following prompting is based on alpaca
+    def generate_and_tokenize_eval(
+        self, llm_max_text_len, data_point, tokenizer, prompter
+    ):
+        in_prompt = prompter.generate_prompt(data_point["system"], data_point["input"])
+        tokenized_full_prompt = tokenizer(
+            in_prompt,
+            truncation=True,
+            max_length=llm_max_text_len,
+            padding=False,
+            return_tensors=None,
+        )
+        tokenized_full_prompt["labels"] = ord(data_point["output"]) - ord("A")
+
+        return tokenized_full_prompt
+
+    def generate_and_tokenize_train(
+        self, llm_max_text_len, llm_train_on_inputs, data_point, tokenizer, prompter
+    ):
+        def tokenize(prompt, add_eos_token=True):
+            result = tokenizer(
+                prompt,
+                truncation=True,
+                max_length=llm_max_text_len,
+                padding=False,
+                return_tensors=None,
+            )
+            if result["input_ids"][-1] != self.tokenizer.eos_token_id and add_eos_token:
+                result["input_ids"].append(self.tokenizer.eos_token_id)
+                result["attention_mask"].append(1)
+
+            result["labels"] = result["input_ids"].copy()
+            return result
+
+        full_prompt = prompter.generate_prompt(
+            data_point["system"], data_point["input"], data_point["output"]
+        )
+        tokenized_full_prompt = tokenize(full_prompt, add_eos_token=True)
+        if not llm_train_on_inputs:
+            tokenized_full_prompt["labels"][:-2] = [-100] * len(
+                tokenized_full_prompt["labels"][:-2]
+            )
+
+        return tokenized_full_prompt
+
+    def seq_to_token_ids(
+        self,
+        llm_max_title_len,
+        llm_system_template,
+        llm_input_template,
+        seq,
+        candidates,
+        label,
+        text_dict,
+        tokenizer,
+        prompter,
+        eval=False,
+    ):
+        def truncate_title(title):
+            title_ = self.tokenizer.tokenize(title)[:llm_max_title_len]
+            title = self.tokenizer.convert_tokens_to_string(title_)
+            return title
+
+        seq_t = " \n ".join(
+            [
+                "(" + str(idx + 1) + ") " + truncate_title(text_dict[item])
+                for idx, item in enumerate(seq)
+            ]
+        )
+        can_t = " \n ".join(
+            [
+                "(" + chr(ord("A") + idx) + ") " + truncate_title(text_dict[item])
+                for idx, item in enumerate(candidates)
+            ]
+        )
+        output = chr(ord("A") + candidates.index(label))  # ranking only
+
+        data_point = {}
+        data_point["system"] = (
+            llm_system_template
+            if llm_system_template is not None
+            else DEFAULT_SYSTEM_PROMPT
+        )
+        data_point["input"] = llm_input_template.format(seq_t, can_t)
+        data_point["output"] = output
+
+        if eval:
+            return self.generate_and_tokenize_eval(
+                llm_max_title_len, data_point, tokenizer, prompter
+            )
+        else:
+            return self.generate_and_tokenize_train(
+                llm_max_title_len, eval, data_point, tokenizer, prompter
+            )
+
+    def __len__(self):
+        return self.size

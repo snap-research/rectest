@@ -14,7 +14,10 @@ np.random.seed(42)
 
 
 def add_candidates_batch(
-    df: pd.DataFrame, option: str = "random", num_candidates: int = 10
+    df: pd.DataFrame,
+    option: str = "random",
+    num_candidates: int = 10,
+    evaluation: bool = False,
 ):
     """
         Get candidates for evaluation/training. We sample candidates from the all items in the batch. We ensure that the candidates do not appear in each sequence.
@@ -22,6 +25,7 @@ def add_candidates_batch(
         df (pd.DataFrame): batch to be passed in the dataloader in the form of a pandas dataframe. The dataframe should have a "sequence" column (List[int]) and a "label" column (int).
         option (str, optional): How to sample candidates. Options: "random", "most_popular", and "least_popular"
         num_candidates (int, optional): Number of candidates to select.
+        evaluation (bool, optional): Whether the batch is for evaluation or training. If True, we do not exclude candidates. Defaults to False.
     Returns:
         pd.DataFrame: batch in the form of a dataframe with candidates added.
     """
@@ -55,7 +59,7 @@ def add_candidates_batch(
         total = sum(item_ids.values())
         item_ids = {k: v / total for k, v in item_ids.items()}
 
-        # get the least popular items
+        # get the least/most popular items
         order = False if option == "least_popular" else True
         item_ids = set(
             [
@@ -68,16 +72,18 @@ def add_candidates_batch(
     else:
         raise NotImplementedError(f"Option value {option} not supported")
 
-    # TODO fix this
     # make sure the candidates do not appear in the sequence
-    # df[cts.CANDIDATES] = df[cts.SEQUENCE].apply(lambda x: list(item_ids - set(x)))
+    if not evaluation:
+        df[cts.CANDIDATES] = df[cts.SEQUENCE].apply(lambda x: list(item_ids - set(x)))
 
-    df[cts.CANDIDATES] = [item_ids] * len(df)
-    
-    # make sure the label does not appear in the candidates
-    df[cts.CANDIDATES] = df.apply(
-        lambda row: list(set(row[cts.CANDIDATES]) - set([row[cts.LABEL]])), axis=1
-    )
+        df[cts.CANDIDATES] = [item_ids] * len(df)
+
+        # make sure the label does not appear in the candidates
+        df[cts.CANDIDATES] = df.apply(
+            lambda row: list(set(row[cts.CANDIDATES]) - set([row[cts.LABEL]])), axis=1
+        )
+    else:
+        df[cts.CANDIDATES] = [list(item_ids)] * len(df)
 
     # we need to ensure that we have enough items to for {num_candidates} candidates.
     try:
@@ -105,6 +111,7 @@ class RecFormerCollateFn:
         option (str): The option for candidate selection
         num_candidates (int): The number of candidates to select.
         tokenizer (RecformerTokenizer): The tokenizer instance for the model (not required).
+        evaluation (bool, optional): Whether the batch is for evaluation or training. If True, we do not exclude candidates. Defaults to False.
 
     Methods:
         __call__(batch: List[Dict[str, Union[List[int], Dict[str, List[str]], List[List[int]], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
@@ -124,6 +131,7 @@ class RecFormerCollateFn:
         option: str = "random",
         num_candidates: int = 10,
         tokenizer: RecformerTokenizer = None,
+        evaluation: bool = False,
     ):
         self.model_name = model_name
         self.max_attr_num = max_attr_num
@@ -133,6 +141,7 @@ class RecFormerCollateFn:
         self.option = option
         self.num_candidates = num_candidates
         self.tokenizer = tokenizer
+        self.evaluation = evaluation
 
         # Initialize tokenizer if not provided
         if self.tokenizer is None:
@@ -162,7 +171,9 @@ class RecFormerCollateFn:
         # get candidates
         if self.num_candidates > 0:
             df_batch = pd.DataFrame({cts.SEQUENCE: batch_sequence, cts.LABEL: labels})
-            df_batch = add_candidates_batch(df_batch, self.option, self.num_candidates)
+            df_batch = add_candidates_batch(
+                df_batch, self.option, self.num_candidates, self.evaluation
+            )
             cans = np.array(df_batch[cts.CANDIDATES].tolist())
             batch_out[cts.CANDIDATES] = torch.LongTensor(cans)
 
@@ -183,6 +194,7 @@ class IDOnlyCollateFn:
     Attributes:
         option (str): The method to use for selecting candidates.
         num_candidates (int): The number of candidates to generate.
+        evaluation (bool): Whether the batch is for evaluation or training.
 
     Methods:
         __call__(batch: List[Dict[str, Union[List[int], List[List[int]], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
@@ -198,9 +210,12 @@ class IDOnlyCollateFn:
                 "len_seq", "label", and optionally "candidates".
     """
 
-    def __init__(self, option: str = "random", num_candidates: int = 10):
+    def __init__(
+        self, option: str = "random", num_candidates: int = 10, evaluation: bool = False
+    ):
         self.option = option
         self.num_candidates = num_candidates
+        self.evaluation = evaluation
 
     def __call__(
         self,
@@ -222,7 +237,9 @@ class IDOnlyCollateFn:
         # get candidates
         if self.num_candidates > 0:
             df_batch = pd.DataFrame({cts.SEQUENCE: batch_sequence, cts.LABEL: labels})
-            df_batch = add_candidates_batch(df_batch, self.option, self.num_candidates)
+            df_batch = add_candidates_batch(
+                df_batch, self.option, self.num_candidates, evaluation=self.evaluation
+            )
             cans = np.array(df_batch[cts.CANDIDATES].tolist())
             batch_out[cts.CANDIDATES] = torch.LongTensor(cans)
 

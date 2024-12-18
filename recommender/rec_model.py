@@ -1,6 +1,6 @@
 import warnings
 from typing import Dict, Optional
-
+from transformers import BitsAndBytesConfig, AutoModelForCausalLM, AutoTokenizer
 import torch
 import torch.nn.functional as F
 from baselines import constants as cts
@@ -12,6 +12,11 @@ from recommender.RecFormer.recformer import (
 )
 from torch import nn
 from torch.nn import CrossEntropyLoss
+from peft import (
+    LoraConfig,
+    get_peft_model,
+    prepare_model_for_kbit_training,
+)
 
 # Suppress FutureWarnings from transformers
 warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
@@ -288,7 +293,7 @@ class Caser(nn.Module):
             else:
                 inputs_emb = torch.cat([inputs_emb, extra_emb], dim=-1)
             inputs_emb = self.input_fc(inputs_emb)
-        mask = torch.ne(states, self.item_num).float().unsqueeze(-1)
+        mask = torch.ne(states, 0).float().unsqueeze(-1)
         inputs_emb *= mask
         inputs_emb = inputs_emb.unsqueeze(1)
         pooled_outputs = []
@@ -384,7 +389,7 @@ class SASRec(nn.Module):
             torch.arange(self.state_size).to(self.device)
         )
         seq = self.emb_dropout(inputs_emb)
-        mask = torch.ne(states, self.item_num).float().unsqueeze(-1).to(self.device)
+        mask = torch.ne(states, 0).float().unsqueeze(-1).to(self.device)
         seq *= mask
         seq_normalized = self.ln_1(seq)
         mh_attn_out = self.mh_attn(seq_normalized, seq)
@@ -510,3 +515,32 @@ class RecformerForSeqRec(LongformerPreTrainedModel):
             loss = loss_fct(logits, target)
 
         return loss
+
+
+class LammaRec:
+    def __init__(self, load_in_4bit: bool, bnb_4bit_use_double_quant: bool):
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=load_in_4bit,
+            bnb_4bit_use_double_quant=bnb_4bit_use_double_quant,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            "meta-llama/Llama-2-7b-hf",
+            quantization_config=bnb_config,
+            device_map="auto",
+        )
+        model.gradient_checkpointing_enable()
+        model = prepare_model_for_kbit_training(model)
+        config = LoraConfig(
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
+        model = get_peft_model(model, config)
+
+        model.config.use_cache = False
+
+        self.model = model
+
+    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor):
+        return self.model(input_ids, attention_mask).logits

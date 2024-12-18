@@ -1,0 +1,61 @@
+model:
+  _target_: recommender.rec_model.LlamaRec
+  item_num: null # updated in code
+  load_in_4bit: true
+  bnb_4bit_use_double_quant: true
+
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 0.001
+  weight_decay: 1e-6
+  eps: 1e-8
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.StepLR
+  step_size: 10
+  gamma: 0.9
+
+collator_train:
+  _target_: recommneder.LlamaRec.trainer.llm.llama_collate_fn
+  llm_max_length: 1024
+  num_candidates: 20
+  eval: false
+    
+
+collator_val:
+  _target_: recommneder.LlamaRec.trainer.llm.llama_collate_fn
+  llm_max_length: 1024
+  num_candidates: 20
+  evaluation: false
+  eval: True
+
+dataset:
+  _target_: baselines.dataloading.LLMDataset
+  data_path: data_experiments/movielens/100k
+  candidates_path: data_experiments/movielens/candidates/100k
+  min_seq_len: 1
+  max_seq_len: 50
+  max_len: 1024
+  llm_negative_sample_size: 10
+
+
+# training
+epochs: 1000
+batch_size_train: 16
+batch_size_val: 32
+early_stopping: 20
+seed: 43
+gradient_accumulation_steps: 1
+# evaluation
+eval_at_start: false
+eval_steps: 10
+# metrics
+metric_ks: 10
+save_metric: 'NDCG'
+# infrastructure
+device: 'cuda'
+number_of_devices: 1
+mixed_precision: 'fp16'
+# results/checkpoints
+accelerate_checkpoint: null
+output_dir: 'recformer'

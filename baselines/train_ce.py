@@ -1,4 +1,7 @@
 import os
+
+os.environ["TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL"] = "1"
+os.environ["TORCH_BLAS_PREFER_HIPBLASLT"] = "0"
 import sys
 
 sys.path.append(".")
@@ -98,7 +101,7 @@ def main(cfg: DictConfig):
 
     # setup accelerator
     accelerator = Accelerator(
-        mixed_precision="fp16" if args.fp16 else False,
+        mixed_precision=args.mixed_precision,
         split_batches=True,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         project_dir=pjoin(args.output_dir, "./accelerate_output"),
@@ -174,6 +177,7 @@ def main(cfg: DictConfig):
     stop_training = False
     step_count = 0
     best_metric = 0
+    steps_per_epoch = len(train_dataloader)
     for epoch in range(args.epochs):
         model.train()
         with accelerator.accumulate(model):
@@ -223,6 +227,9 @@ def main(cfg: DictConfig):
                 scheduler.step()
 
                 step_count += 1
+                # loss every epoch
+                if step_count % steps_per_epoch == 0:
+                    logger.info(f"Epoch: {epoch}, Loss: {loss.item()}")
                 # evalute every args.eval_steps steps
                 if step_count % args.eval_steps == 0:
                     logger.info(
@@ -242,7 +249,9 @@ def main(cfg: DictConfig):
                             best_metric
                             < metrics[f"{args.save_metric}@{args.metric_ks}"]
                         ):
-                            best_metric = metrics[f"{args.save_metric}@{args.metric_ks}"]
+                            best_metric = metrics[
+                                f"{args.save_metric}@{args.metric_ks}"
+                            ]
 
                             # save model
                             logger.info("Saving best model")
@@ -273,7 +282,9 @@ def main(cfg: DictConfig):
                 break
 
     # load best model
-    logger.info(f"Loading best model with val {args.save_metric}: {best_metric}@{args.metric_ks}")
+    logger.info(
+        f"Loading best model with val {args.save_metric}: {best_metric}@{args.metric_ks}"
+    )
     best_ckpt = torch.load(pjoin(args.output_dir, "best_model.bin"))
     model.load_state_dict(best_ckpt)
 

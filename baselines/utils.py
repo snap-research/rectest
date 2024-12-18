@@ -37,3 +37,13 @@ class AllGather(Function):
         grad_input = grad_output.narrow(0, start, length)
 
         return (grad_input, None, None)
+
+
+# Template for LlamaRec
+INPUT_TEMPLATE = """### Instruction: Given user history in chronological order, recommend an item from the candidate pool with its index letter.
+
+### Input: User history: {}; 
+
+### Candidate pool:
+{}
+"""
