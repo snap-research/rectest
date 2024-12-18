@@ -4,12 +4,7 @@ from transformers import BitsAndBytesConfig, AutoModelForCausalLM, AutoTokenizer
 import torch
 import torch.nn.functional as F
 from baselines import constants as cts
-from recommender.RecFormer.recformer import (
-    LongformerPreTrainedModel,
-    RecformerConfig,
-    RecformerModel,
-    Similarity,
-)
+
 from torch import nn
 from torch.nn import CrossEntropyLoss
 from peft import (
@@ -17,6 +12,7 @@ from peft import (
     get_peft_model,
     prepare_model_for_kbit_training,
 )
+from transformers.models.longformer.modeling_longformer import LongformerPreTrainedModel
 
 # Suppress FutureWarnings from transformers
 warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
@@ -414,7 +410,15 @@ class RecformerForSeqRec(LongformerPreTrainedModel):
         pretrain_ckpt: str,
         extra_embeddings: Optional[str] = None,
     ):
-
+        try:
+            from recommender.RecFormer.recformer import (
+            RecformerConfig,
+            RecformerModel,
+            Similarity,
+        )      
+        except ImportError:
+            raise ImportError("Recformer submodule not inialized. Please initialize the submodule by running `git submodule update --init --recursive`")
+            
         # Initialize the configuration
         config = RecformerConfig.from_pretrained(model_name)
         config.max_attr_num = max_attr_num
